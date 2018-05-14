@@ -3,13 +3,19 @@ let populationX = [];
 let brainO, brainX;
 let deadO = [];
 let deadX = [];
+
 let game;
 let gameLen = 0;
 let forcedWin = 0;
+let totalGames = 0;
+let goodGames = 0;
+let generations = 0;
 
-let popSize = 10;
+let popSize = 100;
 
 let turn = 1;
+
+let speedy = 1;
 
 function setup() {
   createCanvas(400, 400);
@@ -17,34 +23,43 @@ function setup() {
   populationX = randomPop(popSize);
   setUpGame();
 
-  //frameRate(10);
+  frameRate(7);
 }
 
 function draw() {
-  if (deadO.length < popSize) {
-    if (winner() == 0) {
-      //console.log("Playing " + ((turn == 1) ? "O" : "X"));
-      makeMove(turn);
-      turn *= -1;
-      gameLen++;
-    } else {
-
-      if (winner() == 1) {
-        deadO.push({brain : brainO, len : gameLen, won : 1, force : forcedWin});
-        deadX.push({brain : brainX, len : gameLen, won : 0, force : undefined});
+  for (let i = 0; i < (popSize-1) * speedy + 1; i++) {
+    if (deadO.length < popSize) {
+      if (winner() == 0) {
+        //console.log("Playing " + ((turn == 1) ? "O" : "X"));
+        makeMove(turn);
+        turn *= -1;
+        gameLen++;
       } else {
-        deadO.push({brain : brainO, len : gameLen, won : 0, force : undefined});
-        deadX.push({brain : brainX, len : gameLen, won : 1, force : -1 * forcedWin});
-      }
 
+        if (winner() == 1) {
+          deadO.push({brain : brainO, len : gameLen, won : 1, force : forcedWin});
+          deadX.push({brain : brainX, len : gameLen, won : 0, force : undefined});
+        } else {
+          deadO.push({brain : brainO, len : gameLen, won : 0, force : undefined});
+          deadX.push({brain : brainX, len : gameLen, won : 1, force : -1 * forcedWin});
+        }
+
+        if (forcedWin == 0) {
+          goodGames++;
+        }
+
+        totalGames++;
+
+        setUpGame();
+      }
+    } else {
+      populationO = nextGen(deadO);
+      populationX = nextGen(deadX);
+      deadO = [];
+      deadX = [];
       setUpGame();
+      generations++;
     }
-  } else {
-    populationO = nextGen(deadO);
-    populationX = nextGen(deadX);
-    deadO = [];
-    deadX = [];
-    setUpGame();
   }
 
   background(255);
@@ -54,7 +69,7 @@ function draw() {
 function setUpGame() {
   game = emptyGame();
   gameLen = 0;
-  turn = 1;
+  turn = random([-1, 1]);
   forcedWin = 0;
   brainO = populationO.pop();
   brainX = populationX.pop();
@@ -80,7 +95,6 @@ function drawBoard() {
 
   line(105, 0, 105, 200);
   line(170, 0, 170, 200);
-  line(105, 0, 105, 200);
   line(30, 60, 230, 60);
   line(30, 125, 230, 125);
 
@@ -91,6 +105,11 @@ function drawBoard() {
       text(txt, 65 * i + span, 65 * j + span);
     }
   }
+
+  textSize(32);
+  text("Total Games: " + totalGames, 15, 300);
+  text("Good Games: " + goodGames, 15, 350);
+  text("Gen: " + generations, 15, 400);
 }
 
 function winner() {
@@ -132,7 +151,7 @@ function winner() {
 function randomPop(size) {
   let pop = []
   for (let i = 0; i < size; i++) {
-    pop.push(new NeuralNetwork(9, 20, 9));
+    pop.push(new NeuralNetwork(9, 7, 9));
   }
 
   return pop;
@@ -162,7 +181,7 @@ function nextGen(prev) {
   let res = [];
   for (let i = 0; i < popSize; i++) {
     let newBorn = new NeuralNetwork(random(randomProb(prev)));
-    newBorn.mutate((x) => x + phiRand() * Math.sqrt(30));
+    newBorn.mutate((x) => x + phiRand() * Math.sqrt(1000));
     res.push(newBorn);
   }
 
@@ -181,10 +200,10 @@ function phiRand() {
 function randomProb(arr) {
   let res = [];
   for (e of arr) {
-    let fittness = e.won * (e.force == 1 ? e.len / 2 : e.len) + 1;
+    let fittness = e.won * ((e.force == 1 ? e.len / 2 : e.len * 10) + 5);
     for (let i = 0; i < fittness; i++) {
       res.push(e.brain);
     }
   }
-  return res;
+  return shuffle(res);
 }
